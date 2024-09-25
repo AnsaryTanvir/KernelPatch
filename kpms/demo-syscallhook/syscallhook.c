@@ -77,8 +77,9 @@ static long syscall_hook_demo_init(const char *args, const char *event, void *__
     __task_pid_nr_ns = (typeof(__task_pid_nr_ns))kallsyms_lookup_name("__task_pid_nr_ns");
     pr_info("kernel function __task_pid_nr_ns addr: %llx\n", __task_pid_nr_ns);
 
+    strcpy(margs,"inline_hook");
     if (!margs) {
-        pr_warn("no args specified, skip hook\n");
+        pr_info("no args specified, skip hook\n");
         return 0;
     }
 
@@ -95,13 +96,13 @@ static long syscall_hook_demo_init(const char *args, const char *event, void *__
         hook_type = INLINE_CHAIN;
         err = inline_hook_syscalln(__NR_openat, 4, before_openat_0, 0, 0);
     } else {
-        pr_warn("unknown args: %s\n", margs);
+        pr_info("unknown args: %s\n", margs);
         return 0;
     }
 
 out:
     if (err) {
-        pr_err("hook openat error: %d\n", err);
+        pr_info("hook openat error: %d\n", err);
     } else {
         pr_info("hook openat success\n");
     }
