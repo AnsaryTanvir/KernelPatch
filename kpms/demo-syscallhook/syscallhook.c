@@ -11,8 +11,9 @@
 #include <syscall.h>
 #include <linux/string.h>
 #include <asm/current.h>
-#include <linux/fs.h>      // For PAGE_SIZE
+#include <linux/fs.h>      // For PAGE_SIZE (not needed if using 4096)
 #include <linux/slab.h>    // For kzalloc and kfree
+#include <linux/gfp.h>     // For GFP_KERNEL
 
 KPM_NAME("kpm-syscall-hook-demo");
 KPM_VERSION("1.0.0");
@@ -20,9 +21,10 @@ KPM_LICENSE("GPL v2");
 KPM_AUTHOR("bmax121");
 KPM_DESCRIPTION("KernelPatch Module System Call Hook Example");
 
-#define PAGE_SIZE 4096
 const char *margs = 0;
 enum hook_type hook_type = NONE;
+
+#define STATIC_PAGE_SIZE 4096  // Use static page size instead of PAGE_SIZE
 
 void before_mincore_0(hook_fargs4_t *args, void *udata)
 {
@@ -34,7 +36,7 @@ void before_mincore_0(hook_fargs4_t *args, void *udata)
 
     /* Populate the vec buffer with zeros to simulate unmapped pages */
     if (vec && len > 0) {
-        size_t page_count = (len + PAGE_SIZE - 1) / PAGE_SIZE; // Round up to page count
+        size_t page_count = (len + STATIC_PAGE_SIZE - 1) / STATIC_PAGE_SIZE; // Round up to page count using 4096
         unsigned char *fake_vec = kzalloc(page_count, GFP_KERNEL); // Allocate and zero a fake vector
 
         if (fake_vec) {
