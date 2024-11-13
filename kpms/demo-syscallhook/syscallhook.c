@@ -11,6 +11,8 @@
 #include <syscall.h>
 #include <linux/string.h>
 #include <asm/current.h>
+#include <linux/fs.h>      // For PAGE_SIZE
+#include <linux/slab.h>    // For kzalloc and kfree
 
 KPM_NAME("kpm-syscall-hook-demo");
 KPM_VERSION("1.0.0");
@@ -44,7 +46,7 @@ void before_mincore_0(hook_fargs4_t *args, void *udata)
 
     /* Set return value to 0, simulating successful execution with all pages as unmapped */
     args->ret = 0;
-    args->done = 1;  // Skip the actual mincore call
+    // args->done = 1; // Skip the actual mincore call (not available in hook_fargs4_t)
 }
 
 uint64_t mincore_counts = 0;
