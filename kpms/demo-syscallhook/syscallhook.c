@@ -7,13 +7,8 @@
 #include <kpmodule.h>
 #include <linux/printk.h>
 #include <uapi/asm-generic/unistd.h>
-#include <linux/uaccess.h>
-#include <syscall.h>
 #include <linux/string.h>
 #include <asm/current.h>
-#include <linux/fs.h>      // For PAGE_SIZE (not needed if using 4096)
-#include <linux/slab.h>    // For kzalloc and kfree
-#include <linux/gfp.h>     // For GFP_KERNEL
 
 KPM_NAME("kpm-syscall-hook-demo");
 KPM_VERSION("1.0.0");
@@ -21,10 +16,7 @@ KPM_LICENSE("GPL v2");
 KPM_AUTHOR("bmax121");
 KPM_DESCRIPTION("KernelPatch Module System Call Hook Example");
 
-const char *margs = 0;
-enum hook_type hook_type = NONE;
-
-#define STATIC_PAGE_SIZE 4096  // Use static page size instead of PAGE_SIZE
+#define STATIC_PAGE_SIZE 4096  // Static page size for simplicity
 
 void before_mincore_0(hook_fargs4_t *args, void *udata)
 {
@@ -34,22 +26,26 @@ void before_mincore_0(hook_fargs4_t *args, void *udata)
 
     pr_info("mincore syscall hooked: returning fake response\n");
 
-    /* Populate the vec buffer with zeros to simulate unmapped pages */
     if (vec && len > 0) {
         size_t page_count = (len + STATIC_PAGE_SIZE - 1) / STATIC_PAGE_SIZE; // Round up to page count using 4096
-        unsigned char *fake_vec = kzalloc(page_count, GFP_KERNEL); // Allocate and zero a fake vector
+        unsigned char *fake_vec = (unsigned char *)kmalloc(page_count, GFP_KERNEL); // Allocate and zero a fake vector manually
 
         if (fake_vec) {
-            if (copy_to_user(vec, fake_vec, page_count)) {
-                pr_warn("mincore hook: Failed to copy fake vec to user\n");
+            memset(fake_vec, 0, page_count); // Zero out the fake vector to simulate unmapped pages
+
+            // Manually copy the buffer to user space
+            for (size_t i = 0; i < page_count; i++) {
+                if (put_user(fake_vec[i], &vec[i])) {
+                    pr_warn("mincore hook: Failed to copy fake vec to user at index %zu\n", i);
+                    break;
+                }
             }
-            kfree(fake_vec);
+
+            kfree(fake_vec);  // Free the allocated memory
         }
     }
 
-    /* Set return value to 0, simulating successful execution with all pages as unmapped */
-    args->ret = 0;
-    // args->done = 1; // Skip the actual mincore call (not available in hook_fargs4_t)
+    args->ret = 0; // Set return value to 0, simulating successful execution with all pages as unmapped
 }
 
 uint64_t mincore_counts = 0;
